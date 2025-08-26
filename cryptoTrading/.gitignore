@@ -1,1 +1,5 @@
-node_module
+node_modules
+
+/generated/prisma
+.env
+docker-compose.yml
