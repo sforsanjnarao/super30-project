@@ -13,3 +13,13 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+
+model sensordata {
+  id        Int      @default(autoincrement())
+  deviceId  String
+  value     Float
+  timestamp DateTime @db.Timestamptz
+
+  @@id([id, timestamp])
+}
