@@ -3,3 +3,4 @@ node_modules
 /generated/prisma
 .env
 docker-compose.yml
+timescaledb_data
