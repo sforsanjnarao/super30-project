@@ -21,7 +21,7 @@ const pool = new Pool({
     user: 'trading_user',
     host: 'localhost',
     database: 'tradingDB',
-    password: 'tradingISon', // Make sure this matches your docker-compose.yml
+    password: 'your_super_secret_password', // Make sure this matches your docker-compose.yml
     port: 5432,
 });
 

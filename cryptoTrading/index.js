@@ -33,7 +33,7 @@ const pool = new Pool({
     user: 'trading_user',
     host: 'localhost',
     database: 'tradingDB',
-    password: 'tradingISon',
+    password: 'your_super_secret_password',
     port: 5432,
 });
 pool.on('connect', () => console.log('Aggregator connected to TimescaleDB!'));

@@ -72,6 +72,7 @@ function setupWebSocket() {
     };
 
     socket.onmessage = (event) => {
+        if(!candleSeries) return;
         // Parse the message from the server
         const message = JSON.parse(event.data);
 
