@@ -17,26 +17,82 @@
 //     console.log('connection Err:', err)
 // })
 
+const WebSocket = require('ws');
+const Redis = require('ioredis');
 const { Pool } = require('pg');
 
 
-
-const WebSocket = require('ws');
-const Redis = require('ioredis');
-
 const BINANCE_WS_URL = 'wss://stream.binance.com:9443/stream?streams=btcusdt@trade';
 const REDIS_CHANNEL_RAW_TRADES = 'binance:btcusdt:raw_trades';
+const ONE_MINUTE_MS = 60 * 1000;
+// const FIVE_MINUTE_MS = 5 * 60 * 1000;
+// const TEN_MINUTE_MS = 10 * 60 * 1000;
 
-const publisher = new Redis({
+// --- Database Connection Pool ---
+const pool = new Pool({
+    user: 'trading_user',
     host: 'localhost',
-    port: 6379
+    database: 'tradingDB',
+    password: 'tradingISon',
+    port: 5432,
 });
-publisher.on('connect', () => {
-    console.log('Redis Publisher connected!');
-});
-publisher.on('error', (err) => {
-    console.error('Redis Publisher Error:', err);
-});
+pool.on('connect', () => console.log('Aggregator connected to TimescaleDB!'));
+pool.on('error', err => console.error('TimescaleDB pool error:', err));
+
+// --- Redis Publisher Client ---
+const publisher = new Redis({ host: 'localhost', port: 6379 });
+publisher.on('connect', () => console.log('Aggregator connected to Redis as a publisher!'));
+publisher.on('error', err => console.error('Redis Publisher Error:', err));
+
+
+
+ //Candlestick Aggregation 
+ const currentCandles = {}; // Stores in-progress candles
+
+ async function saveCandleToDatabase(candleData) {
+     const query = `INSERT INTO candles_1m(time, symbol, open, high, low, close, volume) VALUES($1, $2, $3, $4, $5, $6, $7)`;
+     const values = [new Date(candleData.startTime), candleData.symbol, candleData.open, candleData.high, candleData.low, candleData.close, candleData.volume];
+     try {
+         await pool.query(query, values);
+     } catch (err) {
+         console.error('DB Insert Error:', err.message);
+     }
+ }
+ 
+ function publishClosedCandle(symbol, interval, candle) {
+     if (candle.open === null) return;
+     console.log(`Closing ${interval} candle for ${symbol} at ${new Date(candle.startTime).toLocaleTimeString()}`);
+     saveCandleToDatabase(candle); // Save to TimescaleDB
+ }
+ 
+ function processTradeForCandle(trade, symbol, interval = '1m') {
+     const key = `${symbol}:${interval}`;
+     const tradeTime = trade.E;
+     const currentMinuteStartTime = Math.floor(tradeTime / ONE_MINUTE_MS) * ONE_MINUTE_MS;
+ 
+     let candle = currentCandles[key];
+ 
+     if (!candle || candle.startTime !== currentMinuteStartTime) {
+         if (candle) {
+             publishClosedCandle(symbol, interval, candle);
+         }
+         candle = {
+             open: parseFloat(trade.p), high: parseFloat(trade.p), low: parseFloat(trade.p), close: parseFloat(trade.p),
+             volume: parseFloat(trade.q), startTime: currentMinuteStartTime, symbol: symbol
+         };
+         currentCandles[key] = candle;
+     } else {
+         candle.high = Math.max(candle.high, parseFloat(trade.p));
+         candle.low = Math.min(candle.low, parseFloat(trade.p));
+         candle.close = parseFloat(trade.p);
+         candle.volume += parseFloat(trade.q);
+     }
+ 
+     publisher.publish(`binance:${symbol}:${interval}:updates`, JSON.stringify({
+         event: 'candle_update', symbol: symbol, interval: interval, data: candle
+     }));
+ }
+ 
 
 
 const binanceWs = new WebSocket(BINANCE_WS_URL);
@@ -84,168 +140,13 @@ process.on('SIGINT', () => {    // SIGINT listen to control + C
 });
 
 
-const pool = new Pool({
-    user: 'trading_user',
-    host: 'localhost', // Since we exposed the port in Docker
-    database: 'tradingDB',
-    password: 'your_super_secret_password',
-    port: 5432,
-});
-
-pool.on('connect', () => {
-    console.log('TimescaleDB pool connected!');
-});
-
-pool.on('error', (err) => {
-    console.error('TimescaleDB pool error:', err);
-});
 
 
 
 
 
 
- //Candlestick Aggregation 
-const ONE_MINUTE_MS = 60 * 1000;
-// const FIVE_MINUTE_MS = 5 * 60 * 1000;
-// const TEN_MINUTE_MS = 10 * 60 * 1000;
 
-
-
-const currentCandles = {}; // e.g., { 'BTCUSDT:1m': { open: ..., high: ..., low: ..., close: ..., volume: ..., startTime: ... } }
-
-// Function to initialize a new candle
-function createNewCandle(symbol, timestamp) {
-    // Calculate the start of the current minute
-    const minuteStartTime = Math.floor(timestamp / ONE_MINUTE_MS) * ONE_MINUTE_MS;
-    return {
-        open: null, // Will be set by the first trade in the minute
-        high: -Infinity,
-        low: Infinity,
-        close: null, // Will be updated with each trade
-        volume: 0,
-        startTime: minuteStartTime, // Milliseconds timestamp of the candle's start
-        trades: [], // Optional: to store individual trades for debugging/detailed analysis
-    };
-}
-
-// Function to process an incoming trade and update the current candle
-function processTradeForCandle(trade, symbol, interval = '1m') {
-    const key = `${symbol}:${interval}`;
-    const tradeTime = trade.E; // Event time in milliseconds
-
-    let candle = currentCandles[key];
-
-    // Check if we need a new candle (first trade, or new minute)
-    const currentMinuteStartTime = Math.floor(tradeTime / ONE_MINUTE_MS) * ONE_MINUTE_MS;
-
-    if (!candle || candle.startTime !== currentMinuteStartTime) {
-        // If there's an existing candle that just completed, process and publish it
-        if (candle) {
-            publishClosedCandle(symbol, interval, candle);
-        }
-        // Create a new candle for the new minute
-        candle = createNewCandle(symbol, tradeTime);
-        currentCandles[key] = candle;
-    }
-
-    // Update candle properties
-    const price = parseFloat(trade.p);
-    const quantity = parseFloat(trade.q);
-
-    if (candle.open === null) { // First trade for this candle
-        candle.open = price;
-    }
-    candle.high = Math.max(candle.high, price);
-    candle.low = Math.min(candle.low, price);
-    candle.close = price; // Close is always the last trade price
-    candle.volume += quantity;
-    
-    // Optionally store the trade if needed for more complex aggregations later
-    // candle.trades.push(trade); 
-
-    // console.log(`Updated ${key} candle: O:${candle.open} H:${candle.high} L:${candle.low} C:${candle.close} V:${candle.volume}`);
-
-    // Publish the *partial, ongoing* candle update to a separate Redis channel
-    // This is what your frontend's WebSocket server will subscribe to for real-time chart updates
-    publisher.publish(
-        `binance:${symbol}:${interval}:updates`,
-        JSON.stringify({
-            event: 'candle_update',
-            symbol: symbol,
-            interval: interval,
-            data: {
-                open: candle.open,
-                high: candle.high,
-                low: candle.low,
-                close: candle.close,
-                volume: candle.volume,
-                startTime: candle.startTime, // Unix timestamp in milliseconds
-                timestamp: Date.now() // When this update was generated
-            }
-        })
-    );
-}
-
-// Function to publish a *closed* candle (e.g., to a DB and a separate Pub/Sub channel)
-function publishClosedCandle(symbol, interval, candle) {
-    if (candle.open === null) return; // Don't publish empty candles
-
-    const closedCandleData = {
-        symbol: symbol,
-        interval: interval,
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close,
-        volume: candle.volume,
-        startTime: candle.startTime,
-        endTime: candle.startTime + ONE_MINUTE_MS - 1, // End of the minute
-        isFinal: true
-    };
-    console.log(`CLOSED ${symbol}:${interval} Candle`);
-
-    saveCandleToDatabase(closedCandleData);
-
-
-    // --- Here you would typically save to your historical database ---
-    // (e.g., using a separate function or ORM like Sequelize/TypeORM/Mongoose)
-    // saveCandleToDatabase(closedCandleData); 
-    // For now, we'll just publish to Redis
-    publisher.publish(
-        `binance:${symbol}:${interval}:closed_candles`,
-        JSON.stringify(closedCandleData)
-    );
-
-    // Also store the latest closed candle in Redis for quick lookup
-    publisher.set(`latest_closed_candle:${symbol}:${interval}`, JSON.stringify(closedCandleData));
-}
-
-
-async function saveCandleToDatabase(candleData) {
-    const insertQuery = `
-        INSERT INTO candles_1m(time, symbol, open, high, low, close, volume)
-        VALUES($1, $2, $3, $4, $5, $6, $7)
-        ON CONFLICT DO NOTHING; -- Or use ON CONFLICT...DO UPDATE for more complex logic
-    `;
-    
-    const values = [
-        new Date(candleData.startTime), // Convert Unix ms to a Timestamp object
-        candleData.symbol,
-        candleData.open,
-        candleData.high,
-        candleData.low,
-        candleData.close,
-        candleData.volume
-    ];
-
-    try {
-        await pool.query(insertQuery, values);
-        // console.log(`Saved closed candle for ${candleData.symbol} at ${new Date(candleData.startTime).toISOString()} to DB.`);
-    } catch (err) {
-        console.error('Error saving candle to database:', err);
-    }
-}
 
 
 

@@ -1,0 +1,41 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #121212;
+    color: #e0e0e0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+header {
+    width: 100%;
+    text-align: center;
+    padding: 10px 0;
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.5em;
+}
+
+#connection-status {
+    font-size: 0.9em;
+    color: #ffc107; /* Yellow for connecting */
+}
+
+#connection-status.connected {
+    color: #4caf50; /* Green for connected */
+}
+
+#connection-status.disconnected {
+    color: #f44336; /* Red for disconnected */
+}
+
+#chart-container {
+    width: 90%;
+    max-width: 1200px;
+    height: 600px;
+    margin-top: 20px;
+}
