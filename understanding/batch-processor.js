@@ -3,7 +3,7 @@ const Redis = require('ioredis');
 // In the next step, we'll add the TimescaleDB client here
 // const pg = require('pg'); 
 
-const REDIS_TRADE_QUEUE = 'trade_queue';
+const REDIS_QUEUE_FOR_DB = 'raw_trades_queue';
 const redisClient = new Redis({ host: 'localhost', port: 6379 });
 
 // In-memory store for the current candle being built
@@ -49,7 +49,7 @@ async function processQueue() {
         try {
             // BRPOP is "Blocking Right Pop". It waits until an item is available.
             // The '0' means it will wait indefinitely.
-            const result = await redisClient.brpop(REDIS_TRADE_QUEUE, 0);
+            const result = await redisClient.brpop(REDIS_QUEUE_FOR_DB, 0);
             
             // result is an array: [queueName, itemValue]
             const trade = JSON.parse(result[1]);

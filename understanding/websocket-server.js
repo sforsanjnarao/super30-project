@@ -3,11 +3,11 @@ const WebSocket = require('ws');
 const Redis = require('ioredis');
 const http = require('http'); // Required to create a server for ws
 
-const REDIS_CHANNEL_UPDATES = 'processed_updates'; // Matches the channel from price-poller
+const REDIS_CHANNEL_FOR_LIVE = 'live_updates_channel'; // Matches the channel from price-poller
 
 const subscriber = new Redis({ host: 'localhost', port: 6379 });
 
-subscriber.subscribe(REDIS_CHANNEL_UPDATES, (err, count) => {
+subscriber.subscribe(REDIS_CHANNEL_FOR_LIVE, (err, count) => {
     if (err) return console.error('Failed to subscribe to Redis:', err);
     console.log(`Subscribed to ${count} channel(s) for frontend updates.`);
 });
