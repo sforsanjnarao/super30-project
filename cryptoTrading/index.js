@@ -22,8 +22,8 @@ const Redis = require('ioredis');
 const { Pool } = require('pg');
 
 
-const BINANCE_WS_URL = 'wss://stream.binance.com:9443/stream?streams=btcusdt@trade';
-const REDIS_CHANNEL_RAW_TRADES = 'binance:btcusdt:raw_trades';
+const BINANCE_WS_URL = 'wss://stream.binance.com:9443/stream?streams=btcusdt@trade'; //this is where we are taking the data from the dinance
+const REDIS_CHANNEL_RAW_TRADES = 'binance-raw_trade_datas';  
 const ONE_MINUTE_MS = 60 * 1000;
 // const FIVE_MINUTE_MS = 5 * 60 * 1000;
 // const TEN_MINUTE_MS = 10 * 60 * 1000;
@@ -40,6 +40,7 @@ pool.on('connect', () => console.log('Aggregator connected to TimescaleDB!'));
 pool.on('error', err => console.error('TimescaleDB pool error:', err));
 
 // --- Redis Publisher Client ---
+//connecting as a publicerr
 const publisher = new Redis({ host: 'localhost', port: 6379 });
 publisher.on('connect', () => console.log('Aggregator connected to Redis as a publisher!'));
 publisher.on('error', err => console.error('Redis Publisher Error:', err));
@@ -58,13 +59,11 @@ publisher.on('error', err => console.error('Redis Publisher Error:', err));
          console.error('DB Insert Error:', err.message);
      }
  }
- 
  function publishClosedCandle(symbol, interval, candle) {
      if (candle.open === null) return;
      console.log(`Closing ${interval} candle for ${symbol} at ${new Date(candle.startTime).toLocaleTimeString()}`);
      saveCandleToDatabase(candle); // Save to TimescaleDB
  }
- 
  function processTradeForCandle(trade, symbol, interval = '1m') {
      const key = `${symbol}:${interval}`;
      const tradeTime = trade.E;
@@ -101,22 +100,22 @@ binanceWs.on('open', () => {
     console.log("Binance WebSocket connection opened!");
 });
 
-binanceWs.on('message', (data) => {
-    const parsedData = JSON.parse(data);
-    // console.log('RAW BINANCE DATA:', parsedData); 
+// binanceWs.on('message', (data) => {
+//     const parsedData = JSON.parse(data);
+//     // console.log('RAW BINANCE DATA:', parsedData); 
 
-    if (parsedData.stream && parsedData.data && parsedData.data.e === 'trade') {
-        const trade = parsedData.data;
-        // Publish the raw trade data to Redis
-        publisher.publish(REDIS_CHANNEL_RAW_TRADES, JSON.stringify(trade)) 
-            .then(() => {
-                console.log(`Published raw trade to Redis channel "${REDIS_CHANNEL_RAW_TRADES}"`);
-            })
-            .catch(err => {
-                console.error('Error publishing to Redis:', err);
-            });
-    }
-});
+//     if (parsedData.stream && parsedData.data && parsedData.data.e === 'trade') {
+//         const trade = parsedData.data;
+//         // Publish the raw trade data to Redis
+//         publisher.publish(REDIS_CHANNEL_RAW_TRADES, JSON.stringify(trade)) 
+//             .then(() => {
+//                 console.log(`Published raw trade to Redis channel "${REDIS_CHANNEL_RAW_TRADES}"`);
+//             })
+//             .catch(err => {
+//                 console.error('Error publishing to Redis:', err);
+//             });
+//     }
+// });
 
 binanceWs.on('close', () => {
     console.log('Binance WebSocket connection closed!');
