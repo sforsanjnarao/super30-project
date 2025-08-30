@@ -1,0 +1,25 @@
+.live-price-container {
+    background-color: #1a1a1a;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  
+  .price-display {
+    font-size: 2.5rem;
+    font-weight: bold;
+    padding: 10px;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  }
+  
+  /* Class for when price increases */
+  .price-display.up {
+    color: #4bffb5;
+    background-color: rgba(75, 255, 181, 0.1);
+  }
+  
+  /* Class for when price decreases */
+  .price-display.down {
+    color: #ff4976;
+    background-color: rgba(255, 73, 118, 0.1);
+  }

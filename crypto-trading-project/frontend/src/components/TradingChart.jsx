@@ -1,9 +1,13 @@
 
-import { createChart } from 'lightweight-charts';
+import { createChart,
+    ColorType,
+   
+    CandlestickSeries
+ } from 'lightweight-charts';
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 
-const TradingChart = () => {
+const TradingChart = ({setLivePrice, setLastLivePrice}) => {
     const chartContainerRef = useRef();
     const chart = useRef();
     const candleSeries = useRef();
@@ -11,7 +15,11 @@ const TradingChart = () => {
 
     // Effect for initializing the chart
     useEffect(() => {
-        if (!chartContainerRef.current) return; 
+        if (!chartContainerRef.current) return; //inside this their is a div
+
+        // console.log('lalalal',createChart)
+        // console.log('chart.current', chart.current);
+        // console.dir(chart.current);
         chart.current = createChart(chartContainerRef.current, {
             width: chartContainerRef.current.clientWidth,
             height: 500, // Adjust height as needed
@@ -25,7 +33,7 @@ const TradingChart = () => {
             },
         });
 
-        candleSeries.current = chart.current.addCandlestickSeries({
+        candleSeries.current = chart.current.addSeries(CandlestickSeries,{
             upColor: '#4bffb5',
             downColor: '#ff4976',
             borderDownColor: '#ff4976',
@@ -38,6 +46,7 @@ const TradingChart = () => {
         const fetchInitialData = async () => {
             try {
                 const response = await axios.get('http://localhost:3000/api/candles/BTCUSDT?interval=1m');
+                console.log(response)
                 
                 // The API returns 'bucket' or 'open_time', TradingView needs 'time'
                 // Also, Timescale returns time in ISO format, we need UNIX timestamp
@@ -48,6 +57,9 @@ const TradingChart = () => {
                     low: d.low,
                     close: d.close,
                 }));
+
+
+                console.log(formattedData)
                 
                 candleSeries.current.setData(formattedData);
                 if (formattedData.length > 0) {
@@ -64,6 +76,68 @@ const TradingChart = () => {
         return () => chart.current.remove();
 
     }, []); // Empty dependency array ensures this runs only once on mount
+
+
+
+    // Effect for handling WebSocket connection and live updates
+    useEffect(() => {
+        // Only attempt to connect if we have a candle to update
+        if (!lastCandle) return;
+
+        const ws = new WebSocket('ws://localhost:8080'); // Connect to our WebSocket server
+        // console.log(ws)
+
+        ws.onopen = () => {
+            console.log('WebSocket connection established.');
+        };
+
+        ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+
+            // Handle live trade updates to make the last candle "tick"
+            if (message.type === 'trade') {
+                const trade = message.data;
+                const tradePrice = parseFloat(trade.p);
+
+                // Create an updated candle object
+                const updatedCandle = {
+                    ...lastCandle,
+                    high: Math.max(lastCandle.high, tradePrice),
+                    low: Math.min(lastCandle.low, tradePrice),
+                    close: tradePrice,
+                };
+                
+                // Update the chart and our state
+                candleSeries.current.update(updatedCandle);
+                setLastCandle(updatedCandle);
+            }
+
+            // Handle live depth (ask/bid) updates for the price display
+            if (message.type === 'depth') {
+                const newPrice = message.bestBid; // Or message.bestAsk
+                if (newPrice) {
+                    setLastLivePrice(prev => {
+                      setLivePrice(newPrice);
+                      return prev;
+                    });
+                }
+            }
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket connection closed.');
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket Error:', error);
+        };
+
+        // Cleanup: close the connection when the component unmounts
+        return () => {
+            ws.close();
+        };
+
+    }, [lastCandle, setLivePrice, setLastLivePrice]);
 
     // Effect for resizing the chart
     useEffect(() => {
@@ -84,3 +158,22 @@ const TradingChart = () => {
 };
 
 export default TradingChart;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
