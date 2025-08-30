@@ -4,14 +4,15 @@ const Redis = require('ioredis');
 const pg = require('pg'); 
 
 const REDIS_QUEUE_FOR_DB = 'raw_trades_queue';
-const redisClient = new Redis({ host: 'localhost', port: 6379 });
+const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
+const redisClient = new Redis({ host: REDIS_HOST, port: 6379 });
 
 // --- DATABASE CONNECTION SETUP ---
 const dbPool = new Pool({
-    user: 'postgres', // Replace with your PostgreSQL username
-    host: 'localhost',
-    database: 'crypto_data', // Replace with your database name
-    password: 'your_password', // Replace with your password
+    user: process.env.POSTGRES_USER,
+    host: process.env.DB_HOST,
+    database: process.env.POSTGRES_DB,
+    password: process.env.POSTGRES_PASSWORD,
     port: 5432,
 });
 

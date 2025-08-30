@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Redis Service
+  redis:
+    image: 'redis:7-alpine'
+    container_name: redis_service
+    ports:
+      - '6379:6379'
+
+  # TimescaleDB Service
+  database:
+    image: 'timescale/timescaledb:latest-pg14'
+    container_name: timescaledb_service
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=your_super_secret_password # CHANGE THIS
+      - POSTGRES_DB=crypto_data
+    volumes:
+      - db_data:/var/lib/postgresql/data # This line persists your database data
+
+  # Price Poller Service
+  price-poller:
+    build: ./price-poller
+    container_name: price_poller_app
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+
+  # WebSocket Server Service
+  websocket-server:
+    build: ./websocket-server
+    container_name: websocket_server_app
+    ports:
+      - '8080:8080' # Expose the WebSocket server port to your host machine
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+
+  # Batch Processor Service
+  batch-processor:
+    build: ./batch-processor
+    container_name: batch_processor_app
+    environment:
+      - REDIS_HOST=redis
+      - DB_HOST=database
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=your_super_secret_password # USE THE SAME PASSWORD AS ABOVE
+      - POSTGRES_DB=crypto_data
+    depends_on:
+      - redis
+      - database
+
+# Define the named volume for data persistence
+volumes:
+  db_data:
