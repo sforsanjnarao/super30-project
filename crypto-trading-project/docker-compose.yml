@@ -1,4 +1,4 @@
-version: '3.8'
+# version: '3.8'
 
 services:
   # Redis Service
@@ -20,6 +20,8 @@ services:
       - POSTGRES_DB=crypto_data
     volumes:
       - db_data:/var/lib/postgresql/data # This line persists your database data
+      - ./db-init/init.sql:/docker-entrypoint-initdb.d/init.sql
+
 
   # Price Poller Service
   price-poller:
@@ -29,6 +31,20 @@ services:
       - REDIS_HOST=redis
     depends_on:
       - redis
+
+  backend-api:
+    build: ./backend-api
+    container_name: backend_api_app
+    ports:
+      - '3000:3000' # Expose API port 3000 to the host
+    environment:
+      - PORT=3000
+      - DB_HOST=database
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=your_super_secret_password # USE THE SAME PASSWORD
+      - POSTGRES_DB=crypto_data
+    depends_on:
+      - database # This service cannot work without the database
 
   # WebSocket Server Service
   websocket-server:
