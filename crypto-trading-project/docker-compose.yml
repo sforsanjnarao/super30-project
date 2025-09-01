@@ -8,6 +8,16 @@ services:
     ports:
       - '6379:6379'
 
+
+
+   # Price Poller Service
+  price-poller:
+    build: ./price-poller
+    container_name: price_poller_app
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
   # TimescaleDB Service
   database:
     image: 'timescale/timescaledb:latest-pg14'
@@ -23,28 +33,9 @@ services:
       - ./db-init/init.sql:/docker-entrypoint-initdb.d/init.sql
 
 
-  # Price Poller Service
-  price-poller:
-    build: ./price-poller
-    container_name: price_poller_app
-    environment:
-      - REDIS_HOST=redis
-    depends_on:
-      - redis
+ 
 
-  backend-api:
-    build: ./backend-api
-    container_name: backend_api_app
-    ports:
-      - '3000:3000' # Expose API port 3000 to the host
-    environment:
-      - PORT=3000
-      - DB_HOST=database
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=your_super_secret_password # USE THE SAME PASSWORD
-      - POSTGRES_DB=crypto_data
-    depends_on:
-      - database # This service cannot work without the database
+ 
 
   # WebSocket Server Service
   websocket-server:
@@ -70,6 +61,21 @@ services:
     depends_on:
       - redis
       - database
+
+
+  backend-api:
+    build: ./backend-api
+    container_name: backend_api_app
+    ports:
+      - '3000:3000' # Expose API port 3000 to the host
+    environment:
+      - PORT=3000
+      - DB_HOST=database
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=your_super_secret_password # USE THE SAME PASSWORD
+      - POSTGRES_DB=crypto_data
+    depends_on:
+      - database # This service cannot work without the database
 
 # Define the named volume for data persistence
 volumes:
