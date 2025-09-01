@@ -6,11 +6,9 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Enable CORS for all routes
 app.use(cors());
 
 // --- DATABASE CONNECTION SETUP ---
-// Uses the same environment variables as the batch-processor
 const dbPool = new Pool({
     user: process.env.POSTGRES_USER,
     host: process.env.DB_HOST,
@@ -27,6 +25,7 @@ const dbPool = new Pool({
  *  - start: ISO 8601 string (e.g., '2025-08-25T10:00:00Z'). Optional.
  *  - end: ISO 8601 string (e.g., '2025-08-25T12:00:00Z'). Optional.
  */
+//fetching candel data
 app.get('/api/candles/:symbol', async (req, res) => {
     const { symbol } = req.params;
     const { interval, start, end } = req.query;

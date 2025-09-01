@@ -14,6 +14,16 @@ subscriber.subscribe(REDIS_CHANNEL_FOR_LIVE, (err, count) => {
     console.log(`Subscribed to ${count} channel(s) for frontend updates.`);
 });
 
+// This sends data to all connected client WebSockets
+subscriber.on('message', (channel, message) => {
+    console.log(`Received message on channel ${channel}: ${message}`); // Debugging
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+});
+
 // Create an HTTP server (even if it just serves WebSockets)
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -38,15 +48,7 @@ wss.on('connection', (ws) => {
     });
 });
 
-// This sends data to all connected client WebSockets
-subscriber.on('message', (channel, message) => {
-    // console.log(`Received message on channel ${channel}: ${message}`); // Debugging
-    wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(message);
-        }
-    });
-});
+
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {

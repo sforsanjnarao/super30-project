@@ -1,0 +1,78 @@
+.left-panel {
+  background-color: #1e1e1e;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border-right: 1px solid #333;
+}
+
+.panel-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  padding: 10px 5px;
+  font-weight: bold;
+  color: #888;
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.panel-header span:first-child {
+  text-align: left;
+}
+
+.assets-list {
+  overflow-y: auto;
+}
+
+.asset-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  align-items: center;
+  padding: 8px 5px;
+  font-size: 0.9rem;
+  border-radius: 4px;
+}
+
+.asset-row:hover {
+  background-color: #2a2a2a;
+}
+
+.asset-name {
+  font-weight: 600;
+  text-align: left;
+}
+
+.price-box {
+  padding: 5px 8px;
+  border-radius: 4px;
+  text-align: center;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.price-box.ask {
+  background-color: rgba(255, 73, 118, 0.2);
+  color: #ff4976;
+}
+
+.price-box.bid {
+  background-color: rgba(75, 255, 181, 0.2);
+  color: #4bffb5;
+}
+
+.price-box.up {
+  animation: flash-green 0.5s ease;
+}
+
+.price-box.down {
+  animation: flash-red 0.5s ease;
+}
+
+@keyframes flash-green {
+  0% { background-color: #4bffb5; color: black; }
+  100% { /* Returns to original .ask or .bid color */ }
+}
+
+@keyframes flash-red {
+  0% { background-color: #ff4976; color: black; }
+  100% { /* Returns to original .ask or .bid color */ }
+}

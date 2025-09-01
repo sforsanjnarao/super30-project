@@ -1,0 +1,38 @@
+.positions-panel {
+    grid-column: 1 / -1; /* Span all columns */
+    background-color: #1e1e1e;
+    border-top: 1px solid #333;
+    padding: 15px;
+    overflow-x: auto;
+  }
+  
+  .positions-panel table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  
+  .positions-panel th, .positions-panel td {
+    padding: 10px;
+    text-align: left;
+  }
+  
+  .positions-panel thead {
+    color: #888;
+  }
+  
+  .pnl-loss {
+    color: #ff4976;
+  }
+  
+  .close-btn {
+    background-color: #555;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    line-height: 20px;
+    text-align: center;
+  }

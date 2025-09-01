@@ -1,6 +1,5 @@
 // batch-processor.js
 const Redis = require('ioredis');
-// In the next step, we'll add the TimescaleDB client here
 const {Pool} = require('pg'); 
 
 const REDIS_QUEUE_FOR_DB = 'raw_trades_queue';

@@ -10,7 +10,7 @@ const REDIS_QUEUE_FOR_DB = 'raw_trades_queue';
 const REDIS_CHANNEL_FOR_LIVE = 'live_updates_channel'; 
 
 const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
-const publisher = new Redis({ host: REDIS_HOST, port: 6379 });
+const publisher = new Redis({ host: REDIS_HOST, port: 6379 }); //1st problem
 const binanceWs = new WebSocket(BINANCE_WS_URL);
 
 binanceWs.on('open', () => {
@@ -21,10 +21,17 @@ binanceWs.on('message', (data) => {
     const parsedData = JSON.parse(data);
     const stream = parsedData.stream;
     const eventData = parsedData.data;
+    // console.log(eventData)
 
     if (!stream || !eventData) return;
 
     let liveUpdateMessage = null;
+
+     // --- PATH B: Publish the live update message (trade or depth) to the Pub/Sub channel ---
+     if (liveUpdateMessage) {
+        publisher.publish(REDIS_CHANNEL_FOR_LIVE, JSON.stringify(liveUpdateMessage))
+            .catch(err => console.error(`Error publishing to channel [${REDIS_CHANNEL_FOR_LIVE}]:`, err));
+    }
 
     // Process trade data
     if (stream.includes('@trade') && eventData.e === 'trade') {
@@ -45,11 +52,7 @@ binanceWs.on('message', (data) => {
         };
     }
 
-    // --- PATH B: Publish the live update message (trade or depth) to the Pub/Sub channel ---
-    if (liveUpdateMessage) {
-        publisher.publish(REDIS_CHANNEL_FOR_LIVE, JSON.stringify(liveUpdateMessage))
-            .catch(err => console.error(`Error publishing to channel [${REDIS_CHANNEL_FOR_LIVE}]:`, err));
-    }
+   
 });
 
 binanceWs.on('error', (err) => console.error('Price Poller: WebSocket Error:', err));
