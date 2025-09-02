@@ -6,11 +6,12 @@ const url="wss://stream.binance.com:9443/stream?streams=btcusdt@aggTrade/ethusdt
 const wss =new WebSocket(url);
 
 const spread=0.01; //1%
+const batch:[string, string, number, number, number][]=[]
 wss.on('open',()=>{
     console.log('connected to binance websocket');
 });
 
-const formatePrise= (str:string): {whole:number,decimal:number | undefined}=>{
+const formatePrise= (str:string): {whole:number,decimal:number}=>{
     if(!str.includes('.')){
         return {whole:parseInt(str,10), decimal:0};
     }
@@ -34,7 +35,9 @@ wss.on('message',event=>{
 
     const {whole, decimal}=formatePrise(data.data.p);
 
-    const {buy, sell, decimal }=formateBuySell(whole, decimal || 0, spread);
+    const {buy, sell  }=formateBuySell(whole, decimal || 0, spread);
+    //data formate:-> ts:timespan , p:trading name, whole price, decimal, q: quatity
 
+    batch.push([ts, data.data.p, whole, decimal, data.data.q])
 
 })
