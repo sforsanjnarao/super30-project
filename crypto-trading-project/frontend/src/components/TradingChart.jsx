@@ -115,6 +115,7 @@ const TradingChart = ({setLivePrice, setLastLivePrice}) => {
 
         ws.onmessage = (event) => {
             const message = JSON.parse(event.data);
+            console.log(message)
             // console.log(message)
             // Handle live trade updates to make the last candle "tick"
             if (message.type === 'trade') {
