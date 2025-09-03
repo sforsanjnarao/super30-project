@@ -7,7 +7,7 @@ import { createClient } from "redis";
 
 const url="wss://stream.binance.com:9443/stream?streams=btcusdt@aggTrade/ethusdt@aggTrade/solusdt@aggTrade";
 
-const wss =new WebSocket(url);
+const wss =new WebSocket(url); //this websocket connect 
 
 const spread=0.01; //1%
 let batch:[string, string, number, number, number][]=[]
@@ -75,7 +75,7 @@ wss.on('message',async event=>{
         batch_count++;
         batch=[];
     }
-    await redisClient.publish('trades',JSON.stringify({
+    await redisClient.publish('trades',JSON.stringify({ //here we are publising the data to the redis name called so when any channel going to subscribe to it with same name
         time:ts,
         asset:data.data.s,
         price:whole,
